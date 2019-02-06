@@ -1,71 +1,94 @@
-!> Module for pseudo random number generation. The internal pseudo random
-!> generator is the xoroshiro128plus method.
-module m_random
+! randommod.f08 :: Module for pseudo random number generation. The internal pseudo random
+!                  generator is the xoroshiro128plus method.
+!
+MODULE randommod
 
   implicit none
+  
   private
 
-  ! A 64 bit floating point type
-  integer, parameter :: dp = kind(0.0d0)
+    ! A 64 bit floating point type
+    integer, parameter :: dp = KIND(0.0d0)
 
-  ! A 32 bit integer type
-  integer, parameter :: i4 = selected_int_kind(9)
+    ! A 32 bit integer type
+    integer, parameter :: i4 = SELECTED_INT_KIND(9)
 
-  ! A 64 bit integer type
-  integer, parameter :: i8 = selected_int_kind(18)
+    ! A 64 bit integer type
+    integer, parameter :: i8 = SELECTED_INT_KIND(18)
 
-  !> Random number generator type, which contains the state
-  type rng_t
-     !> The rng state (always use your own seed)
-     integer(i8), private       :: s(2) = [123456789_i8, 987654321_i8]
-     integer(i8), private       :: separator(32) ! Separate cache lines (parallel use)
-   contains
-     procedure, non_overridable :: set_seed    ! Seed the generator
-     procedure, non_overridable :: jump        ! Jump function (see below)
-     procedure, non_overridable :: int_4       ! 4-byte random integer
-     procedure, non_overridable :: int_8       ! 8-byte random integer
-     procedure, non_overridable :: unif_01     ! Uniform (0,1] real
-     procedure, non_overridable :: two_normals ! Two normal(0,1) samples
-     procedure, non_overridable :: poisson     ! Sample from Poisson-dist.
-     procedure, non_overridable :: circle      ! Sample on a circle
-     procedure, non_overridable :: sphere      ! Sample on a sphere
-     procedure, non_overridable :: next        ! Internal method
-  end type rng_t
+    !
+    ! DESCRIPTION :: Random number generator type, which contains the state
+    !
+    TYPE rng_t
+  
+      ! The rng state (always use your own seed)
+      integer(i8), private :: s(2) = [123456789_i8, 987654321_i8]
+      integer(i8), private :: separator(32) ! Separate cache lines (parallel use)
+   
+      contains
+   
+        procedure, non_overridable :: set_seed    ! Seed the generator
+        procedure, non_overridable :: jump        ! Jump function (see below)
+        procedure, non_overridable :: int_4       ! 4-byte random integer
+        procedure, non_overridable :: int_8       ! 8-byte random integer
+        procedure, non_overridable :: unif_01     ! Uniform (0,1] real
+        procedure, non_overridable :: two_normals ! Two normal(0,1) samples
+        procedure, non_overridable :: poisson     ! Sample from Poisson-dist.
+        procedure, non_overridable :: circle      ! Sample on a circle
+        procedure, non_overridable :: sphere      ! Sample on a sphere
+        procedure, non_overridable :: next        ! Internal method
+     
+    END TYPE rng_t
 
-  !> Parallel random number generator type
-  type prng_t
-     type(rng_t), allocatable :: rngs(:)
-   contains
-     procedure, non_overridable :: init_parallel
-     procedure, non_overridable :: update_seed
-  end type prng_t
+    !
+    ! DESCRIPTION :: Parallel random number generator type
+    !
+    TYPE prng_t
+     
+      type(rng_t), allocatable :: rngs(:)
+      
+      contains
+   
+        procedure, non_overridable :: init_parallel
+        procedure, non_overridable :: update_seed
+      
+    END TYPE prng_t
 
-  public :: rng_t
-  public :: prng_t
+    public :: rng_t
+    public :: prng_t
 
-contains
+    contains
 
-  !> Initialize a collection of rng's for parallel use
-  subroutine init_parallel(self, n_proc, rng)
-    class(prng_t), intent(inout) :: self
-    type(rng_t), intent(inout)   :: rng
-    integer, intent(in)          :: n_proc
-    integer                      :: n
+      !
+      ! DESCRIPTION :: Initialize a collection of rng's for parallel use
+      ! PARAMETERS :: class(prng_t) self, integer n_proc, class(rng_t) rng
+      !
+      SUBROUTINE init_parallel(self, n_proc, rng)
+    
+        class(prng_t), intent(inout) :: self
+        type(rng_t), intent(inout)   :: rng
+        integer, intent(in)          :: n_proc
+        integer                      :: n
 
-    if (n_proc < 1) error stop "init_parallel: n_proc < 1"
+        if (n_proc < 1) error stop "init_parallel: n_proc < 1"
 
-    allocate(self%rngs(n_proc))
-    self%rngs(1) = rng
+        allocate(self%rngs(n_proc))
+        self%rngs(1) = rng
 
-    do n = 2, n_proc
-       self%rngs(n) = self%rngs(n-1)
-       call self%rngs(n)%jump()
-    end do
-  end subroutine init_parallel
+        do n = 2, n_proc
+          self%rngs(n) = self%rngs(n-1)
+          call self%rngs(n)%jump()
+        end do
+    
+      END SUBROUTINE init_parallel
 
-  !> Parallel RNG instances are often used temporarily. This routine can
-  !> afterwards be used to update the seed of the user's sequential RNG.
-  subroutine update_seed(self, rng)
+  !
+  ! DESCRIPTION :: Parallel RNG instances are often used temporarily. This routine can
+  !                afterwards be used to update the seed of the user's sequential RNG.
+  ! PARAMETERS :: class(prng_t) self, class(rng_t) rng
+  !
+  SUBROUTINE update_seed(self, rng)
+    
     class(prng_t), intent(inout) :: self
     type(rng_t), intent(inout)   :: rng
     integer                      :: n
@@ -75,10 +98,15 @@ contains
       rng%s(1) = ieor(rng%s(1), self%rngs(n)%s(1))
       rng%s(2) = ieor(rng%s(2), self%rngs(n)%s(2))
     end do
-  end subroutine update_seed
+    
+  END SUBROUTINE update_seed
 
-  !> Set a seed for the rng
-  subroutine set_seed(self, the_seed)
+  !
+  ! DESCRIPTION :: Set a seed for the rng
+  ! PARAMETERS :: class(prng_t) self, integer the_seed
+  !
+  SUBROUTINE set_seed(self, the_seed)
+    
     class(rng_t), intent(inout) :: self
     integer(i8), intent(in)     :: the_seed(2)
 
@@ -86,40 +114,56 @@ contains
 
     ! Simulate calls to next() to improve randomness of first number
     call self%jump()
-  end subroutine set_seed
+    
+  END SUBROUTINE set_seed
 
-  ! This is the jump function for the generator. It is equivalent
-  ! to 2^64 calls to next(); it can be used to generate 2^64
-  ! non-overlapping subsequences for parallel computations.
-  subroutine jump(self)
+  ! DESCRIPTION :: This is the jump function for the generator. It is equivalent
+  !                to 2^64 calls to next(); it can be used to generate 2^64
+  !                non-overlapping subsequences for parallel computations.
+  ! PARAMETERS :: class(prng_t) self
+  !
+  SUBROUTINE jump(self)
+  
     class(rng_t), intent(inout) :: self
     integer                     :: i, b
     integer(i8)                 :: t(2), dummy
 
     ! The signed equivalent of the unsigned constants
-    integer(i8), parameter      :: jmp_c(2) = &
-         (/-4707382666127344949_i8, -2852180941702784734_i8/)
+    integer(i8), parameter :: jmp_c(2) = (/-4707382666127344949_i8, -2852180941702784734_i8/)
 
     t = 0
     do i = 1, 2
        do b = 0, 63
+
           if (iand(jmp_c(i), shiftl(1_i8, b)) /= 0) then
              t = ieor(t, self%s)
           end if
+          
           dummy = self%next()
+          
        end do
     end do
 
     self%s = t
-  end subroutine jump
+    
+  END SUBROUTINE jump
 
-  !> Return 4-byte integer
-  integer(i4) function int_4(self)
+  !
+  ! DESCRIPTION :: Return 4-byte integer
+  ! PARAMETERS :: class(rng_t) self
+  ! RETURNS :: integer(i4) y
+  !
+  FUNCTION int_4(self) RESULT(y)
+  
     class(rng_t), intent(inout) :: self
-    int_4 = int(self%next(), i4)
-  end function int_4
+    integer(i4) :: y
+    
+    y = int( self%next(), i4 )
+    
+  END FUNCTION int_4
 
-  !> Return 8-byte integer
+  ! DESCRIPTION :: Return 8-byte integer
+  ! PARAMETERS :: 
   integer(i8) function int_8(self)
     class(rng_t), intent(inout) :: self
     int_8 = self%next()
@@ -232,4 +276,4 @@ contains
     res = ior(shiftl(x, k), shiftr(x, 64 - k))
   end function rotl
 
-end module m_random
+END MODULE randommod
