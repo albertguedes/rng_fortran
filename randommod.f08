@@ -84,7 +84,7 @@
       !
       ! DESCRIPTION :: Parallel RNG instances are often used temporarily. This routine can
       !                afterwards be used to update the seed of the user's sequential RNG.
-      ! PARAMETERS :: class(prng_t) self, class(rng_t) rng
+      ! PARAMETERS  :: class(prng_t) self, class(rng_t) rng
       !
       SUBROUTINE update_seed(self, rng)
     
@@ -102,7 +102,7 @@
 
       !
       ! DESCRIPTION :: Set a seed for the rng
-      ! PARAMETERS :: class(prng_t) self, integer the_seed
+      ! PARAMETERS  :: class(prng_t) self, integer the_seed
       !
       SUBROUTINE set_seed(self, the_seed)
     
@@ -116,10 +116,11 @@
     
       END SUBROUTINE set_seed
 
+      !
       ! DESCRIPTION :: This is the jump function for the generator. It is equivalent
       !                to 2^64 calls to next(); it can be used to generate 2^64
       !                non-overlapping subsequences for parallel computations.
-      ! PARAMETERS :: class(prng_t) self
+      ! PARAMETERS  :: class(prng_t) self
       !
       SUBROUTINE jump(self)
   
@@ -178,6 +179,7 @@
       ! DESCRIPTION :: Get a uniform [0,1) random real (double precision)
       ! PARAMETERS  :: class(rng_t) self
       ! RETURNS     :: real(dp) y
+      !
       FUNCTION unif_01(self) RESULT(y)
         
         class(rng_t), intent(inout) :: self
@@ -273,6 +275,7 @@
       ! DESCRIPTION :: Sample point on a sphere with given radius
       ! PARAMETERS  :: class(rng_t) self, real(dp) radius
       ! RETURNS     :: real(dp) y(3)
+      !
       function sphere(self, radius) result(y)
         
         class(rng_t), intent(inout) :: self
@@ -320,6 +323,7 @@
       ! DESCRIPTION :: Helper function for next()
       ! PARAMETERS  :: integer(8) x, integer k
       ! RETURNS     :: integer(i8) y
+      !
       PURE FUNCTION rotl(x, k) RESULT(y)
         
         integer(i8), intent(in) :: x
